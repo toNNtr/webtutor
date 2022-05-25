@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<api_ext>
+	<apis>
+		<api>
+			<name>Compount programs lib</name>
+			<libs>
+				<lib>
+					<path>x-local://source/edu_lib/edu_lib.xml</path>
+				</lib>
+			</libs>
+		</api>
+	</apis>
+</api_ext>

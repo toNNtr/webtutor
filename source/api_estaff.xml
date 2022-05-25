@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SPXML-INLINE-FORM CODE-LIB="1">
+<estaff_api>
+	<name TYPE="string"/>
+	<request TYPE="variant" STRICT="1"/>
+	<response TYPE="variant" STRICT="1"/>
+	<server_url TYPE="string"/>
+	<login TYPE="string"/>
+	<password TYPE="string"/>
+</estaff_api>
+</SPXML-INLINE-FORM>

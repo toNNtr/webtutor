@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SPXML-INLINE-FORM CODE-LIB="1" CODE-LIB-URL="x-local://source/edu_lib/edu_lib.js" ALLOW-CALL-FROM-CLIENT="1">
+	<eduLib>
+	</eduLib>
+</SPXML-INLINE-FORM>
