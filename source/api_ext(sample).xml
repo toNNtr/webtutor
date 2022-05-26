@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<api_ext>
+	<apis>
+		<api>
+			<name>E-Staff API</name>
+			<libs>
+				<lib>
+					<path>x-local://source/api_estaff.xml</path>
+				</lib>
+			</libs>
+		</api>
+	</apis>
+</api_ext>
