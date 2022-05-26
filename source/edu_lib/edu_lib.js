@@ -17,8 +17,12 @@
 
     return true;
 }
+
+function isEmpty(p_Array) {
+    return isValid(ArrayOptFirstElem(p_Array));
+}
  
-function getEduPlanContent(p_iCollaboratorID, p_sCompoundProgramCode) {
+function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
 
     /** Переопределяем входные параметры */
     if(isValid(p_iCollaboratorID)) {
@@ -27,21 +31,27 @@ function getEduPlanContent(p_iCollaboratorID, p_sCompoundProgramCode) {
         iCollaboratorID = undefined;
     }
 
-    if(isValid(p_sCompoundProgramCode)) {
-        sCompoundProgramCode = p_sCompoundProgramCode;
+    if(isValid(p_iEducationPlanID)) {
+        iEducationPlanID = p_iEducationPlanID;
     } else {
-        sCompoundProgramCode = "";
+        iEducationPlanID = undefined;
     }
 
     arr_oEduPlansContent = Array();
+    arr_sConditions = Array();
     
     if(isValid(iCollaboratorID)) {
-        
-        /** Находим все планы обучения на сотрудника */
-        query = "for $elem in education_plans where $elem/person_id = " + iCollaboratorID + " return $elem";
-        arr_xEduPlans = XQuery(query);
-        
-        if(ArrayCount(arr_xEduPlans) > 0) {
+        arr_sConditions.push("$elem/person_id = " + iCollaboratorID);
+    }
+
+    if(isValid(iEducationPlanID)) {
+        arr_sConditions.push("$elem/id = " + iEducationPlanID);
+    }
+    
+    query = "for $elem in education_plans where " + arr_sConditions.join(" and ") + " return $elem";
+    arr_xEduPlans = XQuery(query);
+
+    if(ArrayCount(arr_xEduPlans) > 0) {
             
             /** Проходим по каждому плану обучения и формируем объект */
             for(oEduPlan in arr_xEduPlans) {
@@ -162,6 +172,7 @@ function getEduPlanContent(p_iCollaboratorID, p_sCompoundProgramCode) {
                     id: oEduPlanDoc.TopElem.id.Value,
                     name: oEduPlanDoc.TopElem.name.Value,
                     compound_program_id: oEduPlanDoc.TopElem.compound_program_id.Value,
+                    education_plan_doc: oEduPlanDoc,
                     status: sStatus,
                     plan_start_date: oEduPlanDoc.TopElem.plan_date.Value,
                     programs: arr_oPrograms
@@ -170,7 +181,6 @@ function getEduPlanContent(p_iCollaboratorID, p_sCompoundProgramCode) {
                 arr_oEduPlansContent.push(oEduPlanContent);
             }
         }
-    }
 
     return arr_oEduPlansContent;
 }
