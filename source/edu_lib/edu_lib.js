@@ -20,7 +20,7 @@
  
 function getEduPlanContent(p_iCollaboratorID, p_sCompoundProgramCode) {
 
-    /** Переопределяем входные параметры */
+    /** Переопределяем входные параметры **/
     if(isValid(p_iCollaboratorID)) {
         iCollaboratorID = p_iCollaboratorID;
     } else {
