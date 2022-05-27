@@ -234,7 +234,6 @@ function createEduPlan(p_iCollaboratorID, p_iCompoundProgramID) {
         oEduPlanDoc.TopElem.name = oCompoundProgramDoc.TopElem.name;
         oEduPlanDoc.TopElem.compound_program_id = oCompoundProgramDoc.TopElem.id;
         oEduPlanDoc.TopElem.type = "collaborator";
-        oEduPlanDoc.TopElem.update_status_and_activity = false;
         oEduPlanDoc.TopElem.create_date = Date();
         oEduPlanDoc.TopElem.plan_date = Date();
 
@@ -261,6 +260,8 @@ function createEduPlan(p_iCollaboratorID, p_iCompoundProgramID) {
         } catch (error) {}
 
         oEduPlanDoc.TopElem.programs.AssignElem(oCompoundProgramDoc.TopElem.programs);
+
+        oEduPlanDoc.TopElem.update_status_and_activity = false;
 
         oEduPlanDoc.Save();
     }

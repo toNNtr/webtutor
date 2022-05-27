@@ -5,6 +5,9 @@
 !/source/
 !/source/*
 
+!/edu_plan/
+!/edu_plan/*
+
 !/wt/
 !/wt/*
 /wt/archive/
@@ -22,6 +25,8 @@
 
 *.swf
 *.zip
+!/edu_plan/*/*.zip
+
 *.exe
 *.db
 
