@@ -41,6 +41,10 @@ function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
         iEducationPlanID = undefined;
     }
 
+    if(!isValid(iCollaboratorID) && !isValid(iEducationPlanID)) {
+        throw new Error("Нужен хотябы один параметр.");
+    }
+
     arr_oEduPlansContent = Array();
     arr_sConditions = Array();
     
@@ -52,7 +56,8 @@ function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
         arr_sConditions.push("$elem/id = " + iEducationPlanID);
     }
     
-    query = "for $elem in education_plans where " + arr_sConditions.join(" and ") + " return $elem";
+    sConditions = arr_sConditions.join(" and ");
+    query = "for $elem in education_plans where " + sConditions + " return $elem";
     arr_xEduPlans = XQuery(query);
 
     if(ArrayCount(arr_xEduPlans) > 0) {
