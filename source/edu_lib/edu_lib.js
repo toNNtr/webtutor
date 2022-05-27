@@ -18,9 +18,13 @@
     return true;
 }
 
+
+
 function isEmpty(p_Array) {
     return isValid(ArrayOptFirstElem(p_Array));
 }
+
+
  
 function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
 
@@ -183,4 +187,79 @@ function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
         }
 
     return arr_oEduPlansContent;
+}
+
+
+
+function createEduPlan(p_iCollaboratorID, p_iCompoundProgramID) {
+
+    try {
+        iCollaboratorID = p_iCollaboratorID;
+    } catch (error) {
+        iCollaboratorID = undefined;
+    }
+
+    try {
+        iCompoundProgramID = p_iCompoundProgramID;
+    } catch (error) {
+        iCompoundProgramID = undefined;
+    }
+
+    if(!isValid(iCollaboratorID) && !isValid(iCompoundProgramID)) {
+        return false;
+    } else {
+
+        /** Находим существующие планы */
+        query = "for $elem in education_plans where $elem/person_id = " + iCollaboratorID + " and $elem/compound_program_id = " + iCompoundProgramID + " and ($elem/state_id = 0 or $elem/state_id = 1) return $elem";
+        arr_xEduPlans = XQuery(query);
+
+        /** Если планы найдены, тогда ничего не делаем */
+        if(ArrayCount(arr_xEduPlans) > 0) {
+            return false;
+        }
+
+        /** Открываем карточку модульной программы */
+        oCompoundProgramDoc = OpenDoc(UrlFromDocID(iCompoundProgramID));
+
+        /** Создаем план обучения */
+        oEduPlanDoc = OpenNewDoc("x-local://wtv/wtv_education_plan.xmd");
+        oEduPlanDoc.BindToDb();
+
+        oEduPlanDoc.TopElem.code = oCompoundProgramDoc.TopElem.code;
+        oEduPlanDoc.TopElem.name = oCompoundProgramDoc.TopElem.name;
+        oEduPlanDoc.TopElem.compound_program_id = oCompoundProgramDoc.TopElem.id;
+        oEduPlanDoc.TopElem.type = "collaborator";
+        oEduPlanDoc.TopElem.update_status_and_activity = false;
+        oEduPlanDoc.TopElem.create_date = Date();
+        oEduPlanDoc.TopElem.plan_date = Date();
+
+        /** Данные о сотруднике для плана обучения */
+        query = "for $elem in collaborators where $elem/id = " + iCollaboratorID + " return $elem";
+        xCollaborator = ArrayOptFirstElem(XQuery(query));
+
+        oEduPlanDoc.TopElem.person_id = xCollaborator.id;
+        oEduPlanDoc.TopElem.person_fullname = xCollaborator.fullname;
+        oEduPlanDoc.TopElem.person_position_id = xCollaborator.position_id;
+        oEduPlanDoc.TopElem.person_position_name = xCollaborator.position_name;
+        try {
+            oEduPlanDoc.TopElem.person_position_code = xCollaborator.position_id.ForeignElem.code;
+        } catch (error) {}
+        oEduPlanDoc.TopElem.person_org_id = xCollaborator.org_id;
+        oEduPlanDoc.TopElem.person_org_name = xCollaborator.org_name;
+        try {
+            oEduPlanDoc.TopElem.person_org_code = xCollaborator.org_id.ForeignElem.code;
+        } catch (error) {}
+        oEduPlanDoc.TopElem.person_subdivision_id = xCollaborator.position_parent_id;
+        oEduPlanDoc.TopElem.person_subdivision_name = xCollaborator.position_parent_name;
+        try {
+            oEduPlanDoc.TopElem.person_subdivision_code = xCollaborator.position_parent_id.ForeignElem.code;
+        } catch (error) {}
+
+        oEduPlanDoc.TopElem.programs.AssignElem(oCompoundProgramDoc.TopElem.programs);
+
+        oEduPlanDoc.Save();
+    }
+
+    return oEduPlanDoc;
+
 }
