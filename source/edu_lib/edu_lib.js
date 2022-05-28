@@ -189,3 +189,225 @@ function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
 
     return arr_oEduPlansContent;
 }
+
+
+function saveEduPlan(p_oEduPlanContent) {
+    oEduPlanDoc = p_oEduPlanContent.education_plan_doc;
+    bChanged = false;
+
+    /** Сохранение активностей */
+    for(oProgramContent in p_oEduPlanContent.programs) {
+        oProgram = ArrayFind(oEduPlanDoc.TopElem.programs);
+        switch(oProgramContent.status) {
+            case "plan":
+                if(oProgram.state_id != 0) {
+                    oProgram.state_id = 0;
+                    oProgram.finish_date.Clear();
+                    oProgramContent.finish_date = null;
+                    oProgram.result_type.Clear();
+                    oProgram.result_object_id.Clear();
+                    oProgramContent.result_object_id = null;
+                    bChanged = true;
+                }
+                break;
+
+            case "active":
+                if(oProgram.state_id != 1) {
+                    oProgram.state_id = 1;
+                    oProgram.finish_date.Clear();
+                    oProgramContent.finish_date = null;
+                    // result_object_id устанавливается в момент назначения
+
+                    switch(oProgramContent.type) {
+                        case "assessment":
+                            sCatalogType = "test_learning";
+                            break;
+                        case "course":
+                            try {
+                                sCatalogType;
+                            } catch (error) {
+                                sCatalogType = "learning";
+                            }
+
+                            oProgram.result_type = "active_" + sCatalogType;
+                            break;
+                        default:
+                            break;
+                    }
+
+                    bChanged = true;
+                }
+                break;
+
+            case "passed":
+                if(oProgram.state_id != 4) {
+                    oProgram.state_id = 4;
+                    oProgram.result_object_id = oProgramContent.result_object_id;
+
+                    switch(oProgramContent.type) {
+                        case "assessment":
+                            sCatalogType = "test_learning";
+                            break;
+                        case "course":
+                            try {
+                                sCatalogType;
+                            } catch (error) {
+                                sCatalogType = "learning";
+                            }
+
+                            oProgram.result_type = sCatalogType;
+                            oProgram.finish_date = oProgram.result_object_id.ForeignElem.last_usage_date;
+                            break;
+
+                        case "notification_template":
+                            oProgram.finish_date = oProgram.start_date;
+                            break;
+
+                        default:
+                            oProgram.finish_date = Date();
+                            break;
+                    }
+
+                    bChanged = true;
+                }
+                break;
+        }
+    }
+
+    /** Сохранение параметров плана обучения */
+    switch(p_oEduPlanContent.status) {
+        case "plan":
+            if(oEduPlanDoc.TopElem.state_id != 0) {
+                oEduPlanDoc.TopElem.state_id = 0;
+                oEduPlanDoc.TopElem.finish_date.Clear();
+                bChanged = true;
+            }
+            break;
+
+        case "active":
+            if(oEduPlanDoc.TopElem.state_id != 1) {
+                oEduPlanDoc.TopElem.state_id = 1;
+                oEduPlanDoc.TopElem.finish_date.Clear();
+                bChanged = true;
+            }
+            break;
+
+        case "passed":
+            if(oEduPlanDoc.TopElem.state_id != 4) {
+                oEduPlanDoc.TopElem.state_id = 4;
+                oLastFinishedActivity = ArrayOptFirstElem(ArraySort(ArraySelect(oEduPlanDoc.TopElem.programs, "type != 'folder' && required"), "finish_date", "-"));
+                if(isValid(oLastFinishedActivity)) {
+                    oEduPlanDoc.TopElem.finish_date = oLastFinishedActivity.finish_date;
+                }
+
+                bChanged = true;
+            }
+            break;
+    }
+
+    if(bChanged) {
+        oEduPlanDoc.TopElem.last_activity_date = Date();
+        oEduPlanDoc.Save();
+    }
+}
+
+
+function updateEduPlan(p_iEduPlanID) {
+    oEduPlan = ArrayOptFirstElem(getEduPlanContent(undefined, p_iEduPlanID));
+    
+    if(!isValid(oEduPlan)) {
+        return false;
+    }
+
+    /** Обновление статусов активностей */
+    updateEduPlanPrograms(null, oEduPlan);
+
+    /** Обновление статуса плана обучения */
+
+    // Статус passed если все обязательные активности пройдены
+    oNotPassedProgram = ArrayOptFirstElem(oEduPlan.programs, "status != 'passed' && type != 'folder' && required");
+    if(!isValid(oNotPassedProgram)) {
+        oEduPlan.status = "passed";
+    } else {
+        oActiveProgram = ArrayOptFirstElem(oEduPlan.programs, "(status == 'active' || status == 'passed') && type != folder");
+        if(isValid(oActiveProgram)) {
+            oEduPlan.status = "active";
+        } else {
+            oEduPlan.status = "plan";
+        }
+    }
+
+    saveEduPlan(oEduPlan);
+}
+
+
+
+function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
+    arr_oPrograms = ArraySelect(p_oEduPlan.programs, "parent_program_id == p_iCurrentProgramID");
+    for(oProgram in arr_oPrograms) {
+        updateEduPlanPrograms(oProgram.id, p_oEduPlan);
+
+        switch(oProgram.type) {
+            case "folder":
+                arr_oChildPrograms = ArraySelect(p_oEduPlan.programs, "parent_program_id == oProgram.id");
+                
+                // Статус passed если все активности завершены
+                oNotFinishedProgram = ArrayOptFind(arr_oChildPrograms, "status != 'passed'");
+                if(!isValid(oNotFinishedProgram)) {
+                    oProgram.status = "passed";
+                    break;
+                }
+
+                // Статус active если есть хотя бы одна активность в процессе или есть хотя бы одна завершенная активность
+                oActiveProgram = ArrayOptFind(arr_oChildPrograms, "status == 'active' || status == 'passed'");
+                if(isValid(oActiveProgram)) {
+                    oProgram.status = "active";
+                    break;
+                }
+
+                // Статус plan во всех остальных случаях
+                oProgram.status = "plan";
+                break;
+
+
+            case "assessment":
+                sCatalogType = "test_learning";
+            case "course":
+                try {
+                    sCatalogType;
+                } catch (error) {
+                    sCatalogType = "learning";
+                }
+
+                if(isValid(oProgram.result_object_id)) {
+                    // Статус passed если есть завершенные учебные активности
+                    queryFinished = "for $elem in " + sCatalogType + "s where $elem/active_" + sCatalogType + "_id = " + oProgram.result_object_id + " order by $elem/last_usage_date ascending return $elem";
+                    queryActive = "for $elem in active_" + sCatalogType + "s where $elem/id = " + oProgram.result_object_id + " and MatchSome($elem/state_id, (2,3,4)) order by $elem/last_usage_date ascending return $elem";
+                    xFinishedLearning = ArrayOptFirstElem(ArrayUnion(XQuery(queryFinished), XQuery(queryActive)));
+                    if(isValid(xFinishedLearning)) {
+                        oProgram.status = "passed";
+                        oProgram.result_object_id = xFinishedLearning.id;
+                        break;
+                    }
+
+                    // Статус active если есть активные учебные активности
+                    query = "for $elem in active_" + sCatalogType + "s where $elem/id = " + oProgram.result_object_id + " order by $elem/last_usage_date ascending return $elem";
+                    xActiveLearning = ArrayOptFirstElem(XQuery(query));
+                    if(isValid(xActiveLearning)) {
+                        oProgram.status = "active";
+                        break;
+                    }
+                }
+
+                // Статус plan если назначенного теста нет
+                oProgram.status = "plan";
+                break;
+
+
+            case "notification_template":
+                break;
+            default:
+                break;
+        }
+    }
+}
