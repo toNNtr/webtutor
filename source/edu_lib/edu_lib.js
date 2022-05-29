@@ -274,7 +274,8 @@ function saveEduPlan(p_oEduPlanContent) {
 
     /** Сохранение активностей */
     for(oProgramContent in p_oEduPlanContent.programs) {
-        oProgram = ArrayFind(oEduPlanDoc.TopElem.programs);
+        oProgram = ArrayFind(oEduPlanDoc.TopElem.programs, "id == " + oProgramContent.id);
+
         switch(oProgramContent.status) {
             case "plan":
                 if(oProgram.state_id != 0) {
@@ -402,11 +403,11 @@ function updateEduPlan(p_iEduPlanID) {
     /** Обновление статуса плана обучения */
 
     // Статус passed если все обязательные активности пройдены
-    oNotPassedProgram = ArrayOptFirstElem(oEduPlan.programs, "status != 'passed' && type != 'folder' && required");
+    oNotPassedProgram = ArrayOptFind(oEduPlan.programs, "status != 'passed' && type != 'folder' && required");
     if(!isValid(oNotPassedProgram)) {
         oEduPlan.status = "passed";
     } else {
-        oActiveProgram = ArrayOptFirstElem(oEduPlan.programs, "(status == 'active' || status == 'passed') && type != folder");
+        oActiveProgram = ArrayOptFind(oEduPlan.programs, "(status == 'active' || status == 'passed') && type != 'folder'");
         if(isValid(oActiveProgram)) {
             oEduPlan.status = "active";
         } else {
@@ -429,7 +430,8 @@ function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
                 arr_oChildPrograms = ArraySelect(p_oEduPlan.programs, "parent_program_id == oProgram.id");
                 
                 // Статус passed если все активности завершены
-                oNotFinishedProgram = ArrayOptFind(arr_oChildPrograms, "status != 'passed'");
+                oNotFinishedProgram = ArrayOptFind(arr_oChildPrograms, "status != 'passed' && required");
+
                 if(!isValid(oNotFinishedProgram)) {
                     oProgram.status = "passed";
                     break;
@@ -458,17 +460,18 @@ function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
 
                 if(isValid(oProgram.result_object_id)) {
                     // Статус passed если есть завершенные учебные активности
-                    queryFinished = "for $elem in " + sCatalogType + "s where $elem/active_" + sCatalogType + "_id = " + oProgram.result_object_id + " order by $elem/last_usage_date ascending return $elem";
-                    queryActive = "for $elem in active_" + sCatalogType + "s where $elem/id = " + oProgram.result_object_id + " and MatchSome($elem/state_id, (2,3,4)) order by $elem/last_usage_date ascending return $elem";
+                    queryFinished = "for $elem in " + sCatalogType + "s where $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
+                    queryActive = "for $elem in active_" + sCatalogType + "s where $elem/education_plan_id = " + p_oEduPlan.id + " and MatchSome($elem/state_id, (2,3,4)) order by $elem/last_usage_date ascending return $elem";
                     xFinishedLearning = ArrayOptFirstElem(ArrayUnion(XQuery(queryFinished), XQuery(queryActive)));
+                    
                     if(isValid(xFinishedLearning)) {
                         oProgram.status = "passed";
                         oProgram.result_object_id = xFinishedLearning.id;
                         break;
                     }
-
+                    
                     // Статус active если есть активные учебные активности
-                    query = "for $elem in active_" + sCatalogType + "s where $elem/id = " + oProgram.result_object_id + " order by $elem/last_usage_date ascending return $elem";
+                    query = "for $elem in active_" + sCatalogType + "s where $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
                     xActiveLearning = ArrayOptFirstElem(XQuery(query));
                     if(isValid(xActiveLearning)) {
                         oProgram.status = "active";
