@@ -268,6 +268,9 @@ function createEduPlan(p_iCollaboratorID, p_iCompoundProgramID) {
 
     return oEduPlanDoc;
 }
+
+
+
 function saveEduPlan(p_oEduPlanContent) {
     oEduPlanDoc = p_oEduPlanContent.education_plan_doc;
     bChanged = false;
@@ -390,6 +393,7 @@ function saveEduPlan(p_oEduPlanContent) {
 }
 
 
+
 function updateEduPlan(p_iEduPlanID) {
     oEduPlan = ArrayOptFirstElem(getEduPlanContent(undefined, p_iEduPlanID));
     
@@ -490,4 +494,124 @@ function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
                 break;
         }
     }
+}
+
+
+
+function assignEduPlanActivities(p_iEducationPlanID) {
+
+    oEduPlanContent = ArrayOptFirstElem(getEduPlanContent(undefined, p_iEducationPlanID));
+
+    /** Находим все родительские активности */
+    arr_oParentActivities = ArraySelect(oEduPlanContent.programs, "This.parent_program_id == null && This.status != 'passed'");
+
+    for(oParentActivity in arr_oParentActivities) {
+
+        /** Если текущая дата меньше либо равна планируемой дате, тогда проверяем, пройдены ли обязательные активности */
+        if(oParentActivity.plan_start_date <= Date()) {
+            try {
+
+                /** Если активность назначена, тогда завершается выполнение функции */ 
+                if(assignActivity(oParentActivity, oEduPlanContent)) {
+                    break;
+                }      
+
+            } catch (error) {
+                if(error == "Required activity not passed!") {
+                    return;
+                }
+                throw error;
+            }
+        }
+        
+        /** Находим дочерние активности */
+        arr_oChildActivities = ArraySelect(oEduPlanContent.programs, ("This.parent_program_id == " + oParentActivity.id) + " && This.status == 'plan'");
+        
+        for(oChildActivity in arr_oChildActivities) {
+            try {
+
+                /** Если активность назначена, тогда завершается выполнение функции */ 
+                if(assignActivity(oChildActivity, oEduPlanContent)) {
+                    break;
+                }          
+
+            } catch (error) {
+                if(error == "Required activity not passed!") {
+                    return;
+                }
+                throw error;
+            }
+        }
+    }
+
+    /** Обновляем статусы плана обучения */
+    updateEduPlan(oEduPlanContent.id);
+    
+}
+
+
+
+function assignActivity(p_oProgram, p_oEduPlanContent) {
+
+    if(p_oProgram.plan_start_date <= Date()) {
+
+        /** Проходим по активностям, которые должны быть к моменту назначения пройдена */
+        for(iRequiredActivities in p_oProgram.required_activities) {
+
+            oRequiredActivity = ArraySelect(p_oEduPlanContent.programs, ("This.id == " + iRequiredActivities));
+
+            /** Если найдена незавершенная обязательная активность к дате назначения, план отменяется */
+            if(oRequiredActivity.status != "passed") {
+
+                /** Отменяем план обучения */
+                p_oEduPlanContent.status = "canceled";
+                saveEduPlan(p_oEduPlanContent);
+
+                throw new Error("Required activity not passed!");
+
+            }
+
+        }
+
+        try {
+            
+            iCollaboratorID = p_oEduPlanContent.education_plan_doc.TopElem.person_id;
+            
+            switch(p_oProgram.type) {
+        
+                case "folder":
+                    break;
+        
+                case "assessment":
+                    tools.activate_test_to_person(iCollaboratorID, p_oProgram.object_id);
+                    return true;
+                    break;
+                    
+                case "course":
+                    tools.activate_course_to_person(iCollaboratorID, p_oProgram.object_id);
+                    return true;
+                    break;
+        
+                case "notification_template":
+                    try {
+                        tools.create_notification(p_oProgram.object_id.ForeignElem.code, iCollaboratorID);
+                        return true;
+                    } catch (error) {
+                        alert("[edu_lib | assignActivity] Notification template not found! ERROR = " + error); 
+                    }
+                    break;
+        
+                default:
+                    break;
+    
+            }
+    
+        } catch (error) {
+            alert("[edu_lib | assignActivity] ERROR = " + error); 
+        }
+
+    }
+
+    return false;
+
 }
