@@ -261,6 +261,11 @@ function createEduPlan(p_iCollaboratorID, p_iCompoundProgramID) {
 
         oEduPlanDoc.TopElem.programs.AssignElem(oCompoundProgramDoc.TopElem.programs);
 
+        for(oProgram in oEduPlanDoc.TopElem.programs) {
+            oProgram.finish_date.Clear();
+            oProgram.plan_date.Clear();
+        }
+
         oEduPlanDoc.TopElem.update_status_and_activity = false;
 
         oEduPlanDoc.Save();
@@ -278,6 +283,7 @@ function saveEduPlan(p_oEduPlanContent) {
     /** Сохранение активностей */
     for(oProgramContent in p_oEduPlanContent.programs) {
         oProgram = ArrayFind(oEduPlanDoc.TopElem.programs, "id == " + oProgramContent.id);
+        oProgram.result_object_id = oProgramContent.result_object_id;
 
         switch(oProgramContent.status) {
             case "plan":
@@ -323,7 +329,6 @@ function saveEduPlan(p_oEduPlanContent) {
             case "passed":
                 if(oProgram.state_id != 4) {
                     oProgram.state_id = 4;
-                    oProgram.result_object_id = oProgramContent.result_object_id;
 
                     switch(oProgramContent.type) {
                         case "assessment":
@@ -341,14 +346,13 @@ function saveEduPlan(p_oEduPlanContent) {
                             break;
 
                         case "notification_template":
-                            oProgram.finish_date = oProgram.start_date;
+                            oProgram.finish_date = Date();
                             break;
 
                         default:
                             oProgram.finish_date = Date();
                             break;
                     }
-
                     bChanged = true;
                 }
                 break;
@@ -394,8 +398,13 @@ function saveEduPlan(p_oEduPlanContent) {
 
 
 
-function updateEduPlan(p_iEduPlanID) {
-    oEduPlan = ArrayOptFirstElem(getEduPlanContent(undefined, p_iEduPlanID));
+function updateEduPlan(p_aEduPlan) {
+    try {
+        Int(p_aEduPlan);
+        oEduPlan = ArrayOptFirstElem(getEduPlanContent(undefined, p_aEduPlan));
+    } catch (error) {
+        oEduPlan = p_aEduPlan;
+    }
     
     if(!isValid(oEduPlan)) {
         return false;
@@ -455,32 +464,34 @@ function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
 
             case "assessment":
                 sCatalogType = "test_learning";
+                sObjectType = "assessment";
             case "course":
                 try {
                     sCatalogType;
                 } catch (error) {
                     sCatalogType = "learning";
+                    sObjectType = "course";
                 }
-
-                if(isValid(oProgram.result_object_id)) {
-                    // Статус passed если есть завершенные учебные активности
-                    queryFinished = "for $elem in " + sCatalogType + "s where $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
-                    queryActive = "for $elem in active_" + sCatalogType + "s where $elem/education_plan_id = " + p_oEduPlan.id + " and MatchSome($elem/state_id, (2,3,4)) order by $elem/last_usage_date ascending return $elem";
-                    xFinishedLearning = ArrayOptFirstElem(ArrayUnion(XQuery(queryFinished), XQuery(queryActive)));
-                    
-                    if(isValid(xFinishedLearning)) {
-                        oProgram.status = "passed";
-                        oProgram.result_object_id = xFinishedLearning.id;
-                        break;
-                    }
-                    
-                    // Статус active если есть активные учебные активности
-                    query = "for $elem in active_" + sCatalogType + "s where $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
-                    xActiveLearning = ArrayOptFirstElem(XQuery(query));
-                    if(isValid(xActiveLearning)) {
-                        oProgram.status = "active";
-                        break;
-                    }
+       
+                // Статус passed если есть завершенные учебные активности
+                queryFinished = "for $elem in " + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
+                queryActive = "for $elem in active_" + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " and MatchSome($elem/state_id, (2,3,4)) order by $elem/last_usage_date ascending return $elem";
+                xFinishedLearning = ArrayOptFirstElem(ArrayUnion(XQuery(queryFinished), XQuery(queryActive)));
+                
+                if(isValid(xFinishedLearning)) {
+                    oProgram.status = "passed";
+                    oProgram.result_object_id = xFinishedLearning.id;
+                    break;
+                }
+                
+                // Статус active если есть активные учебные активности
+                query = "for $elem in active_" + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
+                alert("[] query = " + query);
+                xActiveLearning = ArrayOptFirstElem(XQuery(query));
+                if(isValid(xActiveLearning)) {
+                    oProgram.status = "active";
+                    oProgram.result_object_id = xActiveLearning.id;
+                    break;
                 }
 
                 // Статус plan если назначенного теста нет
@@ -544,8 +555,9 @@ function assignEduPlanActivities(p_iEducationPlanID) {
         }
     }
 
+    // alert("[assignEduPlanActivities] oEduPlanContent = " + tools.object_to_text(oEduPlanContent, "json"));
     /** Обновляем статусы плана обучения */
-    updateEduPlan(oEduPlanContent.id);
+    updateEduPlan(oEduPlanContent);
     
 }
 
@@ -583,18 +595,33 @@ function assignActivity(p_oProgram, p_oEduPlanContent) {
                     break;
         
                 case "assessment":
-                    tools.activate_test_to_person(iCollaboratorID, p_oProgram.object_id);
+                    // tools.activate_test_to_person(iCollaboratorID, p_oProgram.object_id, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, p_oEduPlanContent.id);
+                    tools.activate_test_to_person({
+                        iPersonID: iCollaboratorID,
+                        iAssessmentID: p_oProgram.object_id,
+                        iEducationPlanID: p_oEduPlanContent.id
+                    });
                     return true;
                     break;
                     
                 case "course":
-                    tools.activate_course_to_person(iCollaboratorID, p_oProgram.object_id);
+                    alert("[assignEduPlanActivities] Назначаем курс");
+                    // tools.activate_course_to_person(iCollaboratorID, p_oProgram.object_id, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, p_oEduPlanContent.id);
+                    tools.activate_course_to_person({
+                        iPersonID: iCollaboratorID,
+                        iCourseID: p_oProgram.object_id,
+                        iEducationPlanID: p_oEduPlanContent.id
+                    });
                     return true;
                     break;
         
                 case "notification_template":
                     try {
-                        tools.create_notification(p_oProgram.object_id.ForeignElem.code, iCollaboratorID);
+                        query = "for $elem in notification_templates where $elem/id = " + p_oProgram.object_id + " return $elem";
+                        xNotification = ArrayOptFirstElem(XQuery(query));
+                        tools.create_notification(xNotification.code, iCollaboratorID);
+                        p_oProgram.status = "passed";
+
                         return true;
                     } catch (error) {
                         alert("[edu_lib | assignActivity] Notification template not found! ERROR = " + error); 
