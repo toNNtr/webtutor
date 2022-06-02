@@ -20,6 +20,16 @@
 
 
 
+function addComment(sComment, sMessage) {
+    if(isValid(sMessage)) {
+        sComment += Trim(Trim(sComment) + ("\n\n---------- [" + Date() + " ] ----------\n" + sMessage + "\n----------\n"));
+    }
+
+    return sComment;
+}
+
+
+
 function isEmpty(p_Array) {
     return isValid(ArrayOptFirstElem(p_Array));
 }
@@ -88,7 +98,7 @@ function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
                         iResultObjectID = undefined;
                     }
                     try {
-                        dFinishDate = oEduPlanProgram.finish_date.Value;
+                        dFinishDate = DateNewTime(oEduPlanProgram.finish_date.Value, 0, 0, 0);
                     } catch (error) {
                         dFinishDate = undefined;
                     }
@@ -97,10 +107,10 @@ function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
                     /** Устанавливаем плановую дату старта активности */
                     arrFolder = ArraySelect(oEduPlanDoc.TopElem.programs, ("This.id == '" + oEduPlanProgram.parent_progpam_id + "'"));
                     try {
-                        dPlanStartDate = tools.AdjustDate(oEduPlanDoc.TopElem.plan_date, oEduPlanProgram.delay_days);
+                        dPlanStartDate = DateNewTime(tools.AdjustDate(oEduPlanDoc.TopElem.plan_date, oEduPlanProgram.delay_days), 0, 0, 0);
                     } catch (error) {
                         if(ArrayCount(arrFolder) > 0) {
-                            dPlanStartDate = tools.AdjustDate(oEduPlanDoc.TopElem.plan_date, arrFolder.delay_days);
+                            dPlanStartDate = DateNewTime(tools.AdjustDate(oEduPlanDoc.TopElem.plan_date, arrFolder.delay_days), 0, 0, 0);
                         } else {
                             dPlanStartDate = undefined;
                         }
@@ -109,9 +119,9 @@ function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
                     /** Устанавливаем плановую дату завершения активности */
                     try {
                         if(oEduPlanProgram.days == 0 && isValid(arrFolder)) {
-                            dPlanFinishDate = tools.AdjustDate(dPlanStartDate, arrFolder.days);
+                            dPlanFinishDate = DateNewTime(tools.AdjustDate(dPlanStartDate, arrFolder.days), 0, 0, 0);
                         } else {
-                            dPlanFinishDate = tools.AdjustDate(dPlanStartDate, oEduPlanProgram.days);
+                            dPlanFinishDate = DateNewTime(tools.AdjustDate(dPlanStartDate, oEduPlanProgram.days), 0, 0, 0);
                         }
                     } catch (error) {
                         dPlanFinishDate = undefined;
@@ -184,6 +194,7 @@ function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
                     education_plan_doc: oEduPlanDoc,
                     status: sStatus,
                     plan_start_date: oEduPlanDoc.TopElem.plan_date.Value,
+                    comment: String(oEduPlanDoc.TopElem.comment.Value),
                     programs: arr_oPrograms
                 }
 
@@ -211,7 +222,7 @@ function createEduPlan(p_iCollaboratorID, p_iCompoundProgramID) {
     }
 
     if(!isValid(iCollaboratorID) && !isValid(iCompoundProgramID)) {
-        return false;
+        return;
     } else {
 
         /** Находим существующие планы */
@@ -220,7 +231,7 @@ function createEduPlan(p_iCollaboratorID, p_iCompoundProgramID) {
 
         /** Если планы найдены, тогда ничего не делаем */
         if(ArrayCount(arr_xEduPlans) > 0) {
-            return false;
+            return;
         }
 
         /** Открываем карточку модульной программы */
@@ -235,7 +246,7 @@ function createEduPlan(p_iCollaboratorID, p_iCompoundProgramID) {
         oEduPlanDoc.TopElem.compound_program_id = oCompoundProgramDoc.TopElem.id;
         oEduPlanDoc.TopElem.type = "collaborator";
         oEduPlanDoc.TopElem.create_date = Date();
-        oEduPlanDoc.TopElem.plan_date = Date();
+        oEduPlanDoc.TopElem.plan_date = DateNewTime(Date(), 0, 0, 0);
 
         /** Данные о сотруднике для плана обучения */
         query = "for $elem in collaborators where $elem/id = " + iCollaboratorID + " return $elem";
@@ -269,9 +280,9 @@ function createEduPlan(p_iCollaboratorID, p_iCompoundProgramID) {
         oEduPlanDoc.TopElem.update_status_and_activity = false;
 
         oEduPlanDoc.Save();
-    }
 
-    return oEduPlanDoc;
+        return oEduPlanDoc; 
+    }
 }
 
 
@@ -303,12 +314,10 @@ function saveEduPlan(p_oEduPlanContent) {
                     oProgram.state_id = 1;
                     oProgram.finish_date.Clear();
                     oProgramContent.finish_date = null;
-                    // result_object_id устанавливается в момент назначения
 
                     switch(oProgramContent.type) {
                         case "assessment":
                             sCatalogType = "test_learning";
-                            break;
                         case "course":
                             try {
                                 sCatalogType;
@@ -333,7 +342,6 @@ function saveEduPlan(p_oEduPlanContent) {
                     switch(oProgramContent.type) {
                         case "assessment":
                             sCatalogType = "test_learning";
-                            break;
                         case "course":
                             try {
                                 sCatalogType;
@@ -360,6 +368,8 @@ function saveEduPlan(p_oEduPlanContent) {
     }
 
     /** Сохранение параметров плана обучения */
+    oEduPlanDoc.TopElem.comment = p_oEduPlanContent.comment;
+
     switch(p_oEduPlanContent.status) {
         case "plan":
             if(oEduPlanDoc.TopElem.state_id != 0) {
@@ -388,6 +398,12 @@ function saveEduPlan(p_oEduPlanContent) {
                 bChanged = true;
             }
             break;
+        case "cancelled":
+            if(oEduPlanDoc.TopElem.state_id != 6) {
+                oEduPlanDoc.TopElem.state_id = 6;
+                oEduPlanDoc.TopElem.finish_date = Date();
+                bChanged = true;
+            }
     }
 
     if(bChanged) {
@@ -407,7 +423,7 @@ function updateEduPlan(p_aEduPlan) {
     }
     
     if(!isValid(oEduPlan)) {
-        return false;
+        return;
     }
 
     /** Обновление статусов активностей */
@@ -415,16 +431,20 @@ function updateEduPlan(p_aEduPlan) {
 
     /** Обновление статуса плана обучения */
 
-    // Статус passed если все обязательные активности пройдены
-    oNotPassedProgram = ArrayOptFind(oEduPlan.programs, "status != 'passed' && type != 'folder' && required");
-    if(!isValid(oNotPassedProgram)) {
-        oEduPlan.status = "passed";
-    } else {
-        oActiveProgram = ArrayOptFind(oEduPlan.programs, "(status == 'active' || status == 'passed') && type != 'folder'");
-        if(isValid(oActiveProgram)) {
-            oEduPlan.status = "active";
+    if(oEduPlan.status != "cancelled") {
+
+        /** Статус passed если все обязательные активности пройдены */
+        oNotPassedProgram = ArrayOptFind(oEduPlan.programs, "status != 'passed' && type != 'folder' && required");
+
+        if(!isValid(oNotPassedProgram)) {
+            oEduPlan.status = "passed";
         } else {
-            oEduPlan.status = "plan";
+            oActiveProgram = ArrayOptFind(oEduPlan.programs, "(status == 'active' || status == 'passed') && type != 'folder'");
+            if(isValid(oActiveProgram)) {
+                oEduPlan.status = "active";
+            } else {
+                oEduPlan.status = "plan";
+            }
         }
     }
 
@@ -486,7 +506,6 @@ function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
                 
                 // Статус active если есть активные учебные активности
                 query = "for $elem in active_" + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
-                alert("[] query = " + query);
                 xActiveLearning = ArrayOptFirstElem(XQuery(query));
                 if(isValid(xActiveLearning)) {
                     oProgram.status = "active";
@@ -524,12 +543,14 @@ function assignEduPlanActivities(p_iEducationPlanID) {
 
                 /** Если активность назначена, тогда завершается выполнение функции */ 
                 if(assignActivity(oParentActivity, oEduPlanContent)) {
-                    break;
+                    return updateEduPlan(oEduPlanContent);
                 }      
 
             } catch (error) {
-                if(error == "Required activity not passed!") {
-                    return;
+                if(error.message == "Required activity not passed!") {
+                    oEduPlanContent.status = "cancelled";
+                    oEduPlanContent.comment = addComment(oEduPlanContent.comment, "План обучения был автоматически переведен в статус \"Отменен\" в связи с непрохождением обязательных активностей.");
+                    return updateEduPlan(oEduPlanContent);
                 }
                 throw error;
             }
@@ -543,19 +564,20 @@ function assignEduPlanActivities(p_iEducationPlanID) {
 
                 /** Если активность назначена, тогда завершается выполнение функции */ 
                 if(assignActivity(oChildActivity, oEduPlanContent)) {
-                    break;
+                    return updateEduPlan(oEduPlanContent);
                 }          
-
+                
             } catch (error) {
-                if(error == "Required activity not passed!") {
-                    return;
+                if(error.message == "Required activity not passed!") {
+                    oEduPlanContent.status = "cancelled";
+                    oEduPlanContent.comment = addComment(oEduPlanContent.comment, "План обучения был автоматически переведен в статус \"Отменен\" в связи с непрохождением обязательных активностей.");
+                    return updateEduPlan(oEduPlanContent);
                 }
                 throw error;
             }
         }
     }
 
-    // alert("[assignEduPlanActivities] oEduPlanContent = " + tools.object_to_text(oEduPlanContent, "json"));
     /** Обновляем статусы плана обучения */
     updateEduPlan(oEduPlanContent);
     
@@ -570,17 +592,19 @@ function assignActivity(p_oProgram, p_oEduPlanContent) {
         /** Проходим по активностям, которые должны быть к моменту назначения пройдена */
         for(iRequiredActivities in p_oProgram.required_activities) {
 
-            oRequiredActivity = ArraySelect(p_oEduPlanContent.programs, ("This.id == " + iRequiredActivities));
+            oRequiredActivity = ArrayOptFind(p_oEduPlanContent.programs, ("This.id == " + iRequiredActivities));
 
             /** Если найдена незавершенная обязательная активность к дате назначения, план отменяется */
-            if(oRequiredActivity.status != "passed") {
-
-                /** Отменяем план обучения */
-                p_oEduPlanContent.status = "canceled";
-                saveEduPlan(p_oEduPlanContent);
-
-                throw new Error("Required activity not passed!");
-
+            if(isValid(oRequiredActivity)) {
+                if(oRequiredActivity.status != "passed") {
+    
+                    /** Отменяем план обучения */
+                    p_oEduPlanContent.status = "canceled";
+                    saveEduPlan(p_oEduPlanContent);
+    
+                    throw new Error("Required activity not passed!");
+    
+                }
             }
 
         }
@@ -595,25 +619,20 @@ function assignActivity(p_oProgram, p_oEduPlanContent) {
                     break;
         
                 case "assessment":
-                    // tools.activate_test_to_person(iCollaboratorID, p_oProgram.object_id, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, p_oEduPlanContent.id);
                     tools.activate_test_to_person({
                         iPersonID: iCollaboratorID,
                         iAssessmentID: p_oProgram.object_id,
                         iEducationPlanID: p_oEduPlanContent.id
                     });
                     return true;
-                    break;
                     
                 case "course":
-                    alert("[assignEduPlanActivities] Назначаем курс");
-                    // tools.activate_course_to_person(iCollaboratorID, p_oProgram.object_id, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, p_oEduPlanContent.id);
                     tools.activate_course_to_person({
                         iPersonID: iCollaboratorID,
                         iCourseID: p_oProgram.object_id,
                         iEducationPlanID: p_oEduPlanContent.id
                     });
                     return true;
-                    break;
         
                 case "notification_template":
                     try {
