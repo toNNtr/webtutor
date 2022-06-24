@@ -295,7 +295,10 @@ function saveEduPlan(p_oEduPlanContent) {
     for(oProgramContent in p_oEduPlanContent.programs) {
         try {
             oProgram = ArrayFind(oEduPlanDoc.TopElem.programs, "id == " + oProgramContent.id);
-            oProgram.result_object_id = oProgramContent.result_object_id;
+            if(oProgram.result_object_id != oProgramContent.result_object_id) {
+                oProgram.result_object_id = oProgramContent.result_object_id;
+                bChanged = true;
+            }
     
             switch(oProgramContent.status) {
                 case "plan":
@@ -463,6 +466,7 @@ function updateEduPlan(p_aEduPlan) {
 function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
     arr_oPrograms = ArraySelect(p_oEduPlan.programs, "parent_program_id == p_iCurrentProgramID");
     for(oProgram in arr_oPrograms) {
+
         updateEduPlanPrograms(oProgram.id, p_oEduPlan);
 
         switch(oProgram.type) {
@@ -516,6 +520,15 @@ function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
                     query = "for $elem in " + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
                     xFinishedLearning = ArrayOptFirstElem(XQuery(query));
                     if(isValid(xFinishedLearning)) {
+                        query = "for $elem in active_" + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
+                        xActiveLearning = ArrayOptFirstElem(XQuery(query));
+                        if(isValid(xActiveLearning)) {
+                            oProgram.status = "passed";
+                            oProgram.result_object_id = xActiveLearning.id;
+
+                            break;
+                        }
+
                         oProgram.status = "passed";
                         oProgram.result_object_id = xFinishedLearning.id;
 
