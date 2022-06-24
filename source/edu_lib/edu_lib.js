@@ -52,7 +52,7 @@ function getEduPlanContent(p_iCollaboratorID, p_iEducationPlanID) {
     }
 
     if(!isValid(iCollaboratorID) && !isValid(iEducationPlanID)) {
-        throw new Error("Нужен хотябы один параметр.");
+        throw new Error("Нужен хотя бы один параметр.");
     }
 
     arr_oEduPlansContent = Array();
@@ -500,15 +500,27 @@ function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
                     sObjectType = "course";
                 }
        
-                // Статус passed если есть завершенные учебные активности
-                queryFinished = "for $elem in " + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
-                queryActive = "for $elem in active_" + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " and MatchSome($elem/state_id, (2,3,4)) order by $elem/last_usage_date ascending return $elem";
-                xFinishedLearning = ArrayOptFirstElem(ArrayUnion(XQuery(queryFinished), XQuery(queryActive)));
+                // // Статус passed если есть завершенные учебные активности
+                // queryFinished = "for $elem in " + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
+                // queryActive = "for $elem in active_" + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " and MatchSome($elem/state_id, (2,3,4)) order by $elem/last_usage_date ascending return $elem";
+                // xFinishedLearning = ArrayOptFirstElem(ArrayUnion(XQuery(queryFinished), XQuery(queryActive)));
                 
-                if(isValid(xFinishedLearning)) {
+                query = "for $elem in active_" + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " and MatchSome($elem/state_id, (2,3,4)) order by $elem/last_usage_date ascending return $elem";
+                xActiveFinishedLearning = ArrayOptFirstElem(XQuery(query));
+                if(isValid(xActiveFinishedLearning)) {
                     oProgram.status = "passed";
-                    oProgram.result_object_id = xFinishedLearning.id;
+                    oProgram.result_object_id = xActiveFinishedLearning.id;
+
                     break;
+                } else {
+                    query = "for $elem in " + sCatalogType + "s where $elem/" + sObjectType + "_id = " + oProgram.object_id + " and $elem/education_plan_id = " + p_oEduPlan.id + " order by $elem/last_usage_date ascending return $elem";
+                    xFinishedLearning = ArrayOptFirstElem(XQuery(query));
+                    if(isValid(xFinishedLearning)) {
+                        oProgram.status = "passed";
+                        oProgram.result_object_id = xFinishedLearning.id;
+
+                        break;
+                    }
                 }
                 
                 // Статус active если есть активные учебные активности
@@ -520,7 +532,7 @@ function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
                     break;
                 }
 
-                // Статус plan если назначенного теста нет
+                // Статус plan если назначенной активности нет
                 oProgram.status = "plan";
                 break;
 
