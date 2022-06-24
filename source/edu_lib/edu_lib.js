@@ -293,51 +293,55 @@ function saveEduPlan(p_oEduPlanContent) {
 
     /** Сохранение активностей */
     for(oProgramContent in p_oEduPlanContent.programs) {
-        oProgram = ArrayFind(oEduPlanDoc.TopElem.programs, "id == " + oProgramContent.id);
-        oProgram.result_object_id = oProgramContent.result_object_id;
-
-        switch(oProgramContent.status) {
-            case "plan":
-                if(oProgram.state_id != 0) {
-                    oProgram.state_id = 0;
-                    oProgram.finish_date.Clear();
-                    oProgramContent.finish_date = null;
-                    oProgram.result_type.Clear();
-                    oProgram.result_object_id.Clear();
-                    oProgramContent.result_object_id = null;
-                    bChanged = true;
-                }
-                break;
-
-            case "active":
-                if(oProgram.state_id != 1) {
-                    oProgram.state_id = 1;
-                    oProgram.finish_date.Clear();
-                    oProgramContent.finish_date = null;
-
-                    switch(oProgramContent.type) {
-                        case "assessment":
-                            sCatalogType = "test_learning";
-                        case "course":
-                            try {
-                                sCatalogType;
-                            } catch (error) {
-                                sCatalogType = "learning";
-                            }
-
-                            oProgram.result_type = "active_" + sCatalogType;
-                            break;
-                        default:
-                            break;
+        try {
+            oProgram = ArrayFind(oEduPlanDoc.TopElem.programs, "id == " + oProgramContent.id);
+            oProgram.result_object_id = oProgramContent.result_object_id;
+    
+            switch(oProgramContent.status) {
+                case "plan":
+                    if(oProgram.state_id != 0) {
+                        oProgram.state_id = 0;
+                        oProgram.finish_date.Clear();
+                        oProgramContent.finish_date = null;
+                        oProgram.result_type.Clear();
+                        oProgram.result_object_id.Clear();
+                        oProgramContent.result_object_id = null;
+                        bChanged = true;
                     }
-
-                    bChanged = true;
-                }
-                break;
-
-            case "passed":
-                if(oProgram.state_id != 4) {
-                    oProgram.state_id = 4;
+                    break;
+    
+                case "active":
+                    if(oProgram.state_id != 1) {
+                        oProgram.state_id = 1;
+                        oProgram.finish_date.Clear();
+                        oProgramContent.finish_date = null;
+    
+                        switch(oProgramContent.type) {
+                            case "assessment":
+                                sCatalogType = "test_learning";
+                            case "course":
+                                try {
+                                    sCatalogType;
+                                } catch (error) {
+                                    sCatalogType = "learning";
+                                }
+    
+                                oProgram.result_type = "active_" + sCatalogType;
+                                break;
+                            default:
+                                break;
+                        }
+    
+                        bChanged = true;
+                    }
+                    break;
+    
+                case "passed":
+                    if(oProgram.state_id != 4) {
+                        oProgram.state_id = 4;
+                        oProgram.finish_date = Date();
+                        bChanged = true;
+                    }
 
                     switch(oProgramContent.type) {
                         case "assessment":
@@ -350,20 +354,23 @@ function saveEduPlan(p_oEduPlanContent) {
                             }
 
                             oProgram.result_type = sCatalogType;
-                            oProgram.finish_date = oProgram.result_object_id.ForeignElem.last_usage_date;
-                            break;
+                            try {
+                                xResultObject = oProgram.result_object_id.ForeignElem;
+                            } catch (error) {
+                                oProgram.result_type = "active_" + sCatalogType;
+                                xResultObject = oProgram.result_object_id.ForeignElem;
+                            }
 
-                        case "notification_template":
-                            oProgram.finish_date = Date();
+                            oProgram.finish_date = xResultObject.last_usage_date;
                             break;
 
                         default:
-                            oProgram.finish_date = Date();
                             break;
                     }
-                    bChanged = true;
-                }
-                break;
+                    break;
+            }
+        } catch (error) {
+            alert("[edu_lib | saveEduPlan] ERROR: " + error + "\n\nperson_fullname = " + oEduPlanDoc.TopElem.person_fullname + "\noProgramContent.name = " + oProgramContent.name + "\nresult_id = " + oProgramContent.result_object_id);
         }
     }
 
