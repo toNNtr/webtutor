@@ -294,6 +294,7 @@ function saveEduPlan(p_oEduPlanContent) {
     /** Сохранение активностей */
     for(oProgramContent in p_oEduPlanContent.programs) {
         try {
+            sCatalogType = undefined;
             oProgram = ArrayFind(oEduPlanDoc.TopElem.programs, "id == " + oProgramContent.id);
             if(oProgram.result_object_id != oProgramContent.result_object_id) {
                 oProgram.result_object_id = oProgramContent.result_object_id;
@@ -324,11 +325,13 @@ function saveEduPlan(p_oEduPlanContent) {
                                 sCatalogType = "test_learning";
                             case "course":
                                 try {
-                                    sCatalogType;
+                                    if(!isValid(sCatalogType)) {
+                                        throw new Error("sCatalogType not defined");
+                                    }
                                 } catch (error) {
                                     sCatalogType = "learning";
                                 }
-    
+
                                 oProgram.result_type = "active_" + sCatalogType;
                                 break;
                             default:
@@ -351,7 +354,9 @@ function saveEduPlan(p_oEduPlanContent) {
                             sCatalogType = "test_learning";
                         case "course":
                             try {
-                                sCatalogType;
+                                if(!isValid(sCatalogType)) {
+                                    throw new Error("sCatalogType not defined");
+                                }
                             } catch (error) {
                                 sCatalogType = "learning";
                             }
@@ -466,7 +471,7 @@ function updateEduPlan(p_aEduPlan) {
 function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
     arr_oPrograms = ArraySelect(p_oEduPlan.programs, "parent_program_id == p_iCurrentProgramID");
     for(oProgram in arr_oPrograms) {
-
+        sCatalogType = undefined;
         updateEduPlanPrograms(oProgram.id, p_oEduPlan);
 
         switch(oProgram.type) {
@@ -498,7 +503,9 @@ function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
                 sObjectType = "assessment";
             case "course":
                 try {
-                    sCatalogType;
+                    if(!isValid(sCatalogType)) {
+                        throw new Error("sCatalogType not defined");
+                    }
                 } catch (error) {
                     sCatalogType = "learning";
                     sObjectType = "course";
