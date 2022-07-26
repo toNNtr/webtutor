@@ -5,8 +5,8 @@
 !/source/
 !/source/*
 
-!/edu_plan/
-!/edu_plan/*
+!/packages/
+!/packages/*
 
 !/wt/
 !/wt/*
@@ -25,7 +25,7 @@
 
 *.swf
 *.zip
-!/edu_plan/*/*.zip
+!/packages/**/*.zip
 
 *.exe
 *.db
