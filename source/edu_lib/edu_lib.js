@@ -31,7 +31,7 @@ function addComment(sComment, sMessage) {
 
 
 function isEmpty(p_Array) {
-    return isValid(ArrayOptFirstElem(p_Array));
+    return !isValid(ArrayOptFirstElem(p_Array));
 }
 
 
