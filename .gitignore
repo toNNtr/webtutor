@@ -15,6 +15,12 @@
 !/wt/web/custom/
 !/wt/web/custom/*
 
+!/wtv/
+/wtv/*
+!/wtv/oapi/
+/wtv/oapi/profiles/dbo.xml
+
+
 *.flv
 *.mp4
 *.avi

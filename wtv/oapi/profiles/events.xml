@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+<profile>
+	<objects>
+		<object_1>
+			<access check="[CRUD flags for ones to check access]">[CRUD flags: c,r,u,d]</access>
+			<lib>[js lib url - optional, functon name will be object_1_create/delete/update/read]</lib>
+			<tag name="[tag_1 code (tag is optional)]"/>
+			........
+			<tag name="[tag_N code (tag is optional)]"/>
+			<include>[fieldslist ;]</include>
+			<exclude>[fieldslist ;]</exclude>
+		</object_1>
+		......
+		<object_N>
+			............
+		</object_N>
+	</objects>
+	<functions>
+		<function_name_1 desc="[fn description]" method="[http method]" path="[url path to fn]" flags="optional, semicolon separated: SolidBody - pass body params as whole object (do not split)">
+			<param name="[param_1 name - mandatory]" type="[param type - integer,real,bool,string]" required="[bool]" default="[corresponding to type]" source="[input source - path,query,body(default)]" desc="[param description]"/>
+			........
+			<param name="[param_N name]" ......
+			
+			<result type="[result type - json/text/void]" array="[bool - return array or single object (applicable for type 'json')]">
+				<property name="[return property name 1 (applicable result type 'json')]" type="[property type - integer,real,bool,string]" desc="[Property description]"/>
+				......
+				<property name="[return property name N]" ........
+			</result>
+			<lib function="[function name inside lib if not equals function node name]">[url to js lib - mandatory]</lib>
+			
+			<tag name="[tag_1 code (tag is optional)]"/>
+			........
+			<tag name="[tag_N code (tag is optional)]"/>
+		</function_name_1>
+		....
+		<function_name_N........>
+			.......
+		</function_name_N>
+	</functions>
+</profile>
+-->
+<profile>
+	<functions>
+
+        <getevents desc="Получить список мероприятий" method="get" path="events" flags="SolidBody">
+
+            <param name="id" type="string" desc="ID мероприятия" source="query" default="" />
+            <param name="type" type="string" desc="Тип мероприятия" source="query" default="" />
+            <param name="date_from" type="string" desc="Дата начала периода выборки" source="query" default="" />
+            <param name="date_to" type="string" desc="Дата окончания периода выборки" source="query" default="" />
+            <param name="status" type="string" desc="Статус проведения мероприятия" source="query" default="" />
+            <param name="org_form" type="string" desc="Организационная форма" source="query" default="" />
+            <param name="education_org" type="string" desc="Обучающая организация" source="query" default="" />
+
+            <result type="text" />
+
+            <lib function="getEvents">x-local://wtv/oapi/libs/events.js</lib>
+
+            <tag name="edu" />
+
+        </getevents>
+
+	</functions>
+</profile>
