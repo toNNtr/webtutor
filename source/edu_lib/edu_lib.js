@@ -275,6 +275,10 @@ function createEduPlan(p_iCollaboratorID, p_iCompoundProgramID) {
         for(oProgram in oEduPlanDoc.TopElem.programs) {
             oProgram.finish_date.Clear();
             oProgram.plan_date.Clear();
+
+            if(oProgram.type == "assessment") {
+                oProgram.result_type = "active_test_learning";
+            }
         }
 
         oEduPlanDoc.TopElem.update_status_and_activity = false;
@@ -308,6 +312,10 @@ function saveEduPlan(p_oEduPlanContent) {
                         oProgram.finish_date.Clear();
                         oProgramContent.finish_date = null;
                         oProgram.result_type.Clear();
+                        if(oProgram.type == "assessment") {
+                            oProgram.result_type = "active_test_learning";
+                        }
+                        
                         oProgram.result_object_id.Clear();
                         oProgramContent.result_object_id = null;
                         bChanged = true;
