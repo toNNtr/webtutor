@@ -19,16 +19,23 @@
 }
 
 
+/**
+ * 
+ * Добавлено ограничение на размер поля Комментарий
+ * 
+ */
+function addComment(oEduPlanContent, sMessage) {
+    l_sComment = RValue(oEduPlanContent.comment);
+    l_sMessage = RValue(sMessage);
 
-function addComment(sComment, sMessage) {
-    if(isValid(sMessage)) {
-        sComment += Trim(Trim(sComment) + ("\n\n---------- [" + Date() + " ] ----------\n" + sMessage + "\n----------\n"));
+    if(StrCharCount(l_sComment) >= 2000) {
+        alert("[eduLib | addComment] ERROR: Слишком большой комментарий.\nEducation plan ID: " + oEduPlanContent.id);
+
+        return;
     }
 
-    return sComment;
+    oEduPlanContent.comment = Trim(Trim(l_sComment) + ("\n\n---------- [" + Date() + " ] ----------\n" + l_sMessage + "\n----------\n"));
 }
-
-
 
 function isEmpty(p_Array) {
     return !isValid(ArrayOptFirstElem(p_Array));
@@ -475,12 +482,24 @@ function updateEduPlan(p_aEduPlan) {
 }
 
 
+/**
+ * 
+ * Здесь добавлено дополнительное ограничение вложенности рекурсии
+ * 
+ */
+function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan, p_iCurrentLevel) {
+    if(!isValid(p_iCurrentLevel)) {
+        p_iCurrentLevel = 0;
+    }
 
-function updateEduPlanPrograms(p_iCurrentProgramID, p_oEduPlan) {
+    if(p_iCurrentLevel >= 5) {
+        return;
+    }
+
     arr_oPrograms = ArraySelect(p_oEduPlan.programs, "parent_program_id == p_iCurrentProgramID");
     for(oProgram in arr_oPrograms) {
         sCatalogType = undefined;
-        updateEduPlanPrograms(oProgram.id, p_oEduPlan);
+        updateEduPlanPrograms(oProgram.id, p_oEduPlan, (p_iCurrentLevel + 1));
 
         switch(oProgram.type) {
             case "folder":
@@ -596,9 +615,10 @@ function assignEduPlanActivities(p_iEducationPlanID) {
             } catch (error) {
                 if(error.message == "Required activity not passed!") {
                     oEduPlanContent.status = "cancelled";
-                    oEduPlanContent.comment = addComment(oEduPlanContent.comment, "План обучения был автоматически переведен в статус \"Отменен\" в связи с непрохождением обязательных активностей.");
+                    addComment(oEduPlanContent, "План обучения был автоматически переведен в статус \"Отменен\" в связи с непрохождением обязательных активностей.");
                     return updateEduPlan(oEduPlanContent);
                 }
+
                 throw error;
             }
         }
@@ -617,9 +637,10 @@ function assignEduPlanActivities(p_iEducationPlanID) {
             } catch (error) {
                 if(error.message == "Required activity not passed!") {
                     oEduPlanContent.status = "cancelled";
-                    oEduPlanContent.comment = addComment(oEduPlanContent.comment, "План обучения был автоматически переведен в статус \"Отменен\" в связи с непрохождением обязательных активностей.");
+                    addComment(oEduPlanContent, "План обучения был автоматически переведен в статус \"Отменен\" в связи с непрохождением обязательных активностей.");
                     return updateEduPlan(oEduPlanContent);
                 }
+
                 throw error;
             }
         }
@@ -645,12 +666,17 @@ function assignActivity(p_oProgram, p_oEduPlanContent) {
             if(isValid(oRequiredActivity)) {
                 if(oRequiredActivity.status != "passed") {
     
+                    /**
+                     * 
+                     * В этом месте убрана отмена плана обучения, это делается в функции выше.
+                     * 
+                     */
+                    
                     /** Отменяем план обучения */
-                    p_oEduPlanContent.status = "canceled";
-                    saveEduPlan(p_oEduPlanContent);
+                    // p_oEduPlanContent.status = "canceled";
+                    // saveEduPlan(p_oEduPlanContent);
     
                     throw new Error("Required activity not passed!");
-    
                 }
             }
 
@@ -706,5 +732,4 @@ function assignActivity(p_oProgram, p_oEduPlanContent) {
     }
 
     return false;
-
 }
